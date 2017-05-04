@@ -69,16 +69,26 @@ class DenseNet3(nn.Module):
     def __init__(self, depth, num_classes, growth_rate=12,
                  reduction=0.5, bottleneck=True, dropRate=0.0):
         super(DenseNet3, self).__init__()
-        in_planes = 2 * growth_rate
-        n = (depth - 4) / 3
+        in_planes = 2 * growth_rate #24
+        n = (depth - 4) / 3 #12
         if bottleneck == True:
-            n = n/2
+            n = n / 2 #6
             block = BottleneckBlock
         else:
             block = BasicBlock
         # 1st conv before any dense block
-        self.conv1 = nn.Conv2d(3, in_planes, kernel_size=3, stride=1,
+        
+        if num_classes == 10: #CIFAR-10
+            self.conv1 = nn.Conv2d(3, in_planes, kernel_size=3, stride=1,
                                padding=1, bias=False)
+            self.pool1 = nn.MaxPool2d(1, stride=1, padding=0)
+        elif num_classes == 1000: #ImageNet
+            self.conv1 = nn.Conv2d(3, in_planes, kernel_size=7, stride=2,
+                               padding=3, bias=False)
+            self.pool1 = nn.MaxPool2d(3, stride=2, padding=1)            
+        
+        
+        
         # 1st block
         self.block1 = DenseBlock(n, in_planes, growth_rate, block, dropRate)
         in_planes = int(in_planes+n*growth_rate)
@@ -109,6 +119,7 @@ class DenseNet3(nn.Module):
                 m.bias.data.zero_()
     def forward(self, x):
         out = self.conv1(x)
+        out = self.pool1(out)
         out = self.trans1(self.block1(out))
         out = self.trans2(self.block2(out))
         out = self.block3(out)

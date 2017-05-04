@@ -58,11 +58,11 @@ def main():
     global args, best_prec1
     args = parser.parse_args()
     if args.tensorboard: configure("runs/%s"%(args.name))
-    
+
     # Data loading code
     normalize = transforms.Normalize(mean=[x/255.0 for x in [125.3, 123.0, 113.9]],
                                      std=[x/255.0 for x in [63.0, 62.1, 66.7]])
-    
+
     if args.augment:
         transform_train = transforms.Compose([
             transforms.RandomCrop(32, padding=4),
@@ -92,12 +92,12 @@ def main():
     # create model
     model = dn.DenseNet3(args.layers, 10, args.growth, reduction=args.reduce,
                          bottleneck=args.bottleneck, dropRate=args.droprate)
-    
+
     # get the number of model parameters
     print('Number of model parameters: {}'.format(
         sum([p.data.nelement() for p in model.parameters()])))
-    
-    # for training on multiple GPUs. 
+
+    # for training on multiple GPUs.
     # Use CUDA_VISIBLE_DEVICES=0,1 to specify which GPUs to use
     # model = torch.nn.DataParallel(model).cuda()
     model = model.cuda()
@@ -117,7 +117,7 @@ def main():
 
     cudnn.benchmark = True
 
-    # define loss function (criterion) and pptimizer
+    # define loss function (criterion) and optimizer
     criterion = nn.CrossEntropyLoss().cuda()
     optimizer = torch.optim.SGD(model.parameters(), args.lr,
                                 momentum=args.momentum,
