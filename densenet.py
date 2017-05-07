@@ -78,7 +78,7 @@ class DenseNet3(nn.Module):
             block = BasicBlock
         # 1st conv before any dense block
         
-        if num_classes == 10: #CIFAR-10
+        if num_classes == 10 or num_classes == 100 : #CIFAR-10/100
             self.conv1 = nn.Conv2d(3, in_planes, kernel_size=3, stride=1,
                                padding=1, bias=False)
             self.pool1 = nn.MaxPool2d(1, stride=1, padding=0)

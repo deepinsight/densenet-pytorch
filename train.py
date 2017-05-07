@@ -82,15 +82,15 @@ def main():
 
     kwargs = {'num_workers': 1, 'pin_memory': True}
     train_loader = torch.utils.data.DataLoader(
-        datasets.CIFAR10('../data', train=True, download=True,
+        datasets.CIFAR100('../data', train=True, download=True,
                          transform=transform_train),
         batch_size=args.batch_size, shuffle=True, **kwargs)
     val_loader = torch.utils.data.DataLoader(
-        datasets.CIFAR10('../data', train=False, transform=transform_test),
+        datasets.CIFAR100('../data', train=False, transform=transform_test),
         batch_size=args.batch_size, shuffle=True, **kwargs)
 
     # create model
-    model = dn.DenseNet3(args.layers, 10, args.growth, reduction=args.reduce,
+    model = dn.DenseNet3(args.layers, 100, args.growth, reduction=args.reduce,
                          bottleneck=args.bottleneck, dropRate=args.droprate)
 
     # get the number of model parameters
