@@ -67,8 +67,9 @@ class DenseBlock(nn.Module):
 
 class DenseNet3(nn.Module):
     def __init__(self, depth, num_classes, growth_rate=12,
-                 reduction=0.5, bottleneck=True, dropRate=0.0):
+                 reduction=0.5, bottleneck=True, dropRate=0.0, numgroups = 1):
         super(DenseNet3, self).__init__()
+        self.numgroups = numgroups
         in_planes = 2 * growth_rate #24
         n = (depth - 4) / 3 #12
         if bottleneck == True:
@@ -78,35 +79,46 @@ class DenseNet3(nn.Module):
             block = BasicBlock
         # 1st conv before any dense block
         
-        if num_classes == 10: #CIFAR-10
-            self.conv1 = nn.Conv2d(3, in_planes, kernel_size=3, stride=1,
-                               padding=1, bias=False)
-            self.pool1 = nn.MaxPool2d(1, stride=1, padding=0)
+        if num_classes == 10 or num_classes == 100: #CIFAR-10/100
+            for i in range(numgroups):
+                exec( 'self.conv1_{idx} = nn.Conv2d(3, in_planes, kernel_size=3, stride=1, \
+                               padding=1, bias=False)'.format(idx=i) )
+                exec( 'self.pool1_{idx} = nn.MaxPool2d(1, stride=1, padding=0)'.format(idx=i) )
         elif num_classes == 1000: #ImageNet
-            self.conv1 = nn.Conv2d(3, in_planes, kernel_size=7, stride=2,
-                               padding=3, bias=False)
-            self.pool1 = nn.MaxPool2d(3, stride=2, padding=1)            
+            for i in range(numgroups):
+                exec( 'self.conv1_{idx} = nn.Conv2d(3, in_planes, kernel_size=7, stride=2, \
+                               padding=3, bias=False)'.format(idx=i) )
+                exec( 'self.pool1_{idx} = nn.MaxPool2d(3, stride=2, padding=1)'.format(idx=i) )           
         
         
         
         # 1st block
-        self.block1 = DenseBlock(n, in_planes, growth_rate, block, dropRate)
+        for i in range(numgroups):
+            exec('self.block1_{idx} = DenseBlock(n, in_planes, growth_rate, block, dropRate)'.format(idx=i))
         in_planes = int(in_planes+n*growth_rate)
-        self.trans1 = TransitionBlock(in_planes, int(math.floor(in_planes*reduction)), dropRate=dropRate)
+        for i in range(numgroups):
+            exec('self.trans1_{idx} = TransitionBlock(in_planes, int(math.floor(in_planes*reduction)), dropRate=dropRate)'.format(idx=i))
         in_planes = int(math.floor(in_planes*reduction))
         # 2nd block
-        self.block2 = DenseBlock(n, in_planes, growth_rate, block, dropRate)
+        for i in range(numgroups):
+            exec('self.block2_{idx} = DenseBlock(n, in_planes, growth_rate, block, dropRate)'\
+                 .format(idx=i))
         in_planes = int(in_planes+n*growth_rate)
-        self.trans2 = TransitionBlock(in_planes, int(math.floor(in_planes*reduction)), dropRate=dropRate)
+        for i in range(numgroups):
+            exec('self.trans2_{idx} = TransitionBlock(in_planes, int(math.floor(in_planes*reduction)),\
+                dropRate=dropRate)'.format(idx=i))
         in_planes = int(math.floor(in_planes*reduction))
         # 3rd block
-        self.block3 = DenseBlock(n, in_planes, growth_rate, block, dropRate)
+        for i in range(numgroups):
+            exec('self.block3_{idx} = DenseBlock(n, in_planes, growth_rate, block, dropRate)'.format(idx=i))
         in_planes = int(in_planes+n*growth_rate)
         # global average pooling and classifier
-        self.bn1 = nn.BatchNorm2d(in_planes)
-        self.relu = nn.ReLU(inplace=True)
-        self.fc = nn.Linear(in_planes, num_classes)
-        self.in_planes = in_planes
+        for i in range(numgroups):
+            exec('self.bn1_{idx} = nn.BatchNorm2d(in_planes)'.format(idx=i))
+        for i in range(numgroups):
+            exec('self.relu_{idx} = nn.ReLU(inplace=True)'.format(idx=i))
+        self.fc = nn.Linear(in_planes*numgroups, num_classes)
+        self.in_planes = in_planes*numgroups
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
@@ -118,12 +130,20 @@ class DenseNet3(nn.Module):
             elif isinstance(m, nn.Linear):
                 m.bias.data.zero_()
     def forward(self, x):
-        out = self.conv1(x)
-        out = self.pool1(out)
-        out = self.trans1(self.block1(out))
-        out = self.trans2(self.block2(out))
-        out = self.block3(out)
-        out = self.relu(self.bn1(out))
-        out = F.avg_pool2d(out, 8)
-        out = out.view(-1, self.in_planes)
+        catlist = []
+        for i in range(self.numgroups):
+            exec('out_{idx} = self.conv1_{idx}(x)'.format(idx=i))
+            exec('out_{idx} = self.pool1_{idx}(out_{idx})'.format(idx=i))
+            exec('out_{idx} = self.block1_{idx}(out_{idx})'.format(idx=i))
+            exec('out_{idx} = self.trans1_{idx}(out_{idx})'.format(idx=i))
+            exec('out_{idx} = self.block2_{idx}(out_{idx})'.format(idx=i))
+            exec('out_{idx} = self.trans2_{idx}(out_{idx})'.format(idx=i))
+            exec('out_{idx} = self.block3_{idx}(out_{idx})'.format(idx=i))
+            exec('out_{idx} = self.bn1_{idx}(out_{idx})'.format(idx=i))
+            exec('out_{idx} = self.relu_{idx}(out_{idx})'.format(idx=i))
+            exec('out_{idx} = F.avg_pool2d(out_{idx}, 8)'.format(idx=i))
+            exec('out_{idx} = out_{idx}.view(-1, self.in_planes/self.numgroups)'.format(idx=i))
+            exec('catlist.append(out_{idx})'.format(idx=i))
+        out = torch.cat(catlist, 1)
+        #out = catlist[0]
         return self.fc(out)
