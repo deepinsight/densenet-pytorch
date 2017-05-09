@@ -78,7 +78,7 @@ class DenseNet3(nn.Module):
         else:
             block = BasicBlock
         # 1st conv before any dense block
-        
+
         if num_classes == 10 or num_classes == 100: #CIFAR-10/100
             for i in range(numgroups):
                 exec( 'self.conv1_{idx} = nn.Conv2d(3, in_planes, kernel_size=3, stride=1, \
@@ -88,10 +88,10 @@ class DenseNet3(nn.Module):
             for i in range(numgroups):
                 exec( 'self.conv1_{idx} = nn.Conv2d(3, in_planes, kernel_size=7, stride=2, \
                                padding=3, bias=False)'.format(idx=i) )
-                exec( 'self.pool1_{idx} = nn.MaxPool2d(3, stride=2, padding=1)'.format(idx=i) )           
-        
-        
-        
+                exec( 'self.pool1_{idx} = nn.MaxPool2d(3, stride=2, padding=1)'.format(idx=i) )
+
+
+
         # 1st block
         for i in range(numgroups):
             exec('self.block1_{idx} = DenseBlock(n, in_planes, growth_rate, block, dropRate)'.format(idx=i))
