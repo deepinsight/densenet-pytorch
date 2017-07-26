@@ -19,16 +19,16 @@ class BasicBlock(nn.Module):
         return torch.cat([x, out], 1)
 
 class BottleneckBlock(nn.Module):
-    def __init__(self, in_planes, out_planes, dropRate=0.0):
+    def __init__(self, in_planes, out_planes, dropRate=0.0, groupingx = 1, groupingo = 1):
         super(BottleneckBlock, self).__init__()
         inter_planes = out_planes * 4
         self.bn1 = nn.BatchNorm2d(in_planes)
         self.relu = nn.ReLU(inplace=True)
         self.conv1 = nn.Conv2d(in_planes, inter_planes, kernel_size=1, stride=1,
-                               padding=0, bias=False)
+                               groups = groupingx, padding=0, bias=False)
         self.bn2 = nn.BatchNorm2d(inter_planes)
         self.conv2 = nn.Conv2d(inter_planes, out_planes, kernel_size=3, stride=1,
-                               padding=1, bias=False)
+                               groups = groupingo, padding=1, bias=False)
         self.droprate = dropRate
     def forward(self, x):
         out = self.conv1(self.relu(self.bn1(x)))
@@ -54,20 +54,22 @@ class TransitionBlock(nn.Module):
         return F.avg_pool2d(out, 2)
 
 class DenseBlock(nn.Module):
-    def __init__(self, nb_layers, in_planes, growth_rate, block, dropRate=0.0):
+    def __init__(self, nb_layers, in_planes, growth_rate, block, dropRate=0.0, groupingx= 1, groupingo = 1):
         super(DenseBlock, self).__init__()
-        self.layer = self._make_layer(block, in_planes, growth_rate, nb_layers, dropRate)
-    def _make_layer(self, block, in_planes, growth_rate, nb_layers, dropRate):
+        self.layer = self._make_layer(block, in_planes, growth_rate, nb_layers, dropRate, \
+                                      groupingx = groupingx , groupingo = groupingo)
+    def _make_layer(self, block, in_planes, growth_rate, nb_layers, dropRate, groupingx, groupingo):
         layers = []
         for i in range(nb_layers):
-            layers.append(block(in_planes+i*growth_rate, growth_rate, dropRate))
+            layers.append(block(in_planes+i*growth_rate, growth_rate, dropRate, groupingx, groupingo))
         return nn.Sequential(*layers)
     def forward(self, x):
         return self.layer(x)
 
 class DenseNet3(nn.Module):
     def __init__(self, depth, num_classes, growth_rate=12,
-                 reduction=0.5, bottleneck=True, dropRate=0.0, numgroups = 1):
+                 reduction=0.5, bottleneck=True, dropRate=0.0, numgroups = 1, grouping = 1,\
+                 groupingx = 1, groupingo = 1):
         super(DenseNet3, self).__init__()
         self.numgroups = numgroups
         in_planes = 2 * growth_rate #24
@@ -94,15 +96,16 @@ class DenseNet3(nn.Module):
 
         # 1st block
         for i in range(numgroups):
-            exec('self.block1_{idx} = DenseBlock(n, in_planes, growth_rate, block, dropRate)'.format(idx=i))
+            exec('self.block1_{idx} = DenseBlock(n, in_planes, growth_rate, block, dropRate, {groupingx}, {groupingo})'\
+                 .format(idx=i, groupingx = groupingx, groupingo = groupingo ))
         in_planes = int(in_planes+n*growth_rate)
         for i in range(numgroups):
             exec('self.trans1_{idx} = TransitionBlock(in_planes, int(math.floor(in_planes*reduction)), dropRate=dropRate)'.format(idx=i))
         in_planes = int(math.floor(in_planes*reduction))
         # 2nd block
         for i in range(numgroups):
-            exec('self.block2_{idx} = DenseBlock(n, in_planes, growth_rate, block, dropRate)'\
-                 .format(idx=i))
+            exec('self.block2_{idx} = DenseBlock(n, in_planes, growth_rate, block, dropRate, {groupingx}, {groupingo} )'\
+                 .format(idx=i, groupingx = groupingx, groupingo = groupingo))
         in_planes = int(in_planes+n*growth_rate)
         for i in range(numgroups):
             exec('self.trans2_{idx} = TransitionBlock(in_planes, int(math.floor(in_planes*reduction)),\
@@ -110,7 +113,8 @@ class DenseNet3(nn.Module):
         in_planes = int(math.floor(in_planes*reduction))
         # 3rd block
         for i in range(numgroups):
-            exec('self.block3_{idx} = DenseBlock(n, in_planes, growth_rate, block, dropRate)'.format(idx=i))
+            exec('self.block3_{idx} = DenseBlock(n, in_planes, growth_rate, block, dropRate, {groupingx}, {groupingo})'\
+                 .format(idx=i, groupingx = groupingx, groupingo = groupingo))
         in_planes = int(in_planes+n*growth_rate)
         # global average pooling and classifier
         for i in range(numgroups):

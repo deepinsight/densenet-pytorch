@@ -43,6 +43,10 @@ parser.add_argument('--reduce', default=0.5, type=float,
                     help='compression rate in transition stage (default: 0.5)')
 parser.add_argument('--numgroups', default=1, type=int,
                     help='numgroups  (default: 1, suggest 16)')
+parser.add_argument('--xx', default=1, type=int,
+                    help='Classical Grouping For Additive(default: 1, suggest 4)')
+parser.add_argument('--xo', default=1, type=int,
+                    help='Classical Grouping For Trunk(default: 1, suggest 4)')
 parser.add_argument('--no-bottleneck', dest='bottleneck', action='store_false',
                     help='To not use bottleneck block')
 parser.add_argument('--resume', default='', type=str,
@@ -93,7 +97,8 @@ def main():
 
     # create model
     model = dn.DenseNet3(args.layers, 100, args.growth, reduction=args.reduce,
-                         bottleneck=args.bottleneck, dropRate=args.droprate, numgroups = args.numgroups)
+                         bottleneck=args.bottleneck, dropRate=args.droprate, numgroups = args.numgroups,\
+                         groupingx = args.xx, groupingo = args.xo)
 
     # get the number of model parameters
     print('Number of model parameters: {}'.format(
