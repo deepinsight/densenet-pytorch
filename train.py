@@ -147,7 +147,8 @@ def main():
             'state_dict': model.state_dict(),
             'best_prec1': best_prec1,
         }, is_best)
-    print 'Best accuracy: ', best_prec1
+        print 'Current best accuracy: ', best_prec1
+    print 'Global best accuracy: ', best_prec1
 
 def train(train_loader, model, criterion, optimizer, epoch):
     """Train for one epoch on the training set"""
